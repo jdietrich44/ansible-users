@@ -19,8 +19,8 @@ This project demonstrates user and SSH key management using Ansible. It allows y
 1. Clone the repo
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-directory>
+git clone https://github.com/jdietrich44/ansible-users.git
+cd ansible-users
 ```
 
 2. Edit your inventory file
