@@ -1,0 +1,40 @@
+---
+user_groups:
+  admin:
+    name: admin
+    sudo: true
+    sudoline: "ALL=(ALL) NOPASSWD:ALL"
+    restricted_sudo: false
+  dev:
+    name: dev
+    sudo: false
+    restricted_sudo: true
+    sudoline: "ALL=(ALL) NOPASSWD:/usr/bin/systemctl, /usr/bin/journalctl"
+
+users:
+  julie:
+    name: julie
+    group: admin
+    groups:
+      - jenkins
+      - dbadmin
+    shell: /bin/bash
+    state: present
+    authorized_key:
+      - files/ssh_keys/julie.pub
+    sudo: true
+    restricted_sudo: false
+  jeff:
+    name: jeff
+    group: dev
+    shell: /bin/zsh
+    state: present
+    authorized_key:
+      - files/ssh_keys/jeff.pub
+    sudo: false
+    restricted_sudo: true
+
+deleted_users:
+  - name: bob
+#  - name: julie
+#  - name: jeff

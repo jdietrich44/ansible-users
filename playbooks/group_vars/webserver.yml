@@ -1,0 +1,22 @@
+---
+user_groups:
+  admin:
+    name: admin
+    sudo: true
+    sudoline: "ALL=(ALL) NOPASSWD:ALL"
+
+users:
+  julie:
+    name: julie
+    group: admin
+    shell: /bin/bash
+    state: present
+    authorized_key:
+      - files/ssh_keys/julie.pub
+    sudo: true
+    restricted_sudo: false
+
+deleted_users:
+  - name: bob
+#  - name: julie
+#  - name: jeff

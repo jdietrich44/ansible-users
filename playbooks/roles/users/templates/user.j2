@@ -1,0 +1,6 @@
+#jinja2: lstrip_blocks: True
+{% if item.value.sudoline is defined %}
+{{ item.value.name }} {{ item.value.sudoline }}
+{% elif item.value.sudo | default(false) %}
+{{ item.value.name }} ALL=(ALL) NOPASSWD:ALL
+{% endif %}

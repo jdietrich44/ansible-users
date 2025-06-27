@@ -1,0 +1,128 @@
+---
+# Var structure:
+#
+# users:
+#   $username:
+#     name: $username
+#     group: $group (defaults to match username)
+#     groups: $groups (defaults to omit)
+#     shell: $shell (defaults to /bin/bash)
+#     state: $state (defaults to present)
+#     authorized_keys:
+#       - $path/$to/$key/$keyfile.pub
+#       - $keys/$keyfile.pub
+#     sudo: True (defaults to false)
+#     sudoline: $sudoline (defaults to "ALL=(ALL) NOPASSWD:ALL")
+#     restricted_sudo: $restricted_sudo
+
+- name: Add primary groups
+  group:
+    name: "{{ item.value.name }}"
+    state: present
+  loop: "{{ user_groups | dict2items }}"
+  when: user_groups is defined
+  become: True
+  tags:
+    - users
+
+- name: Add user groups
+  group:
+    name: "{{ item.value.group | default(item.value.name)}}"
+    state: present
+  loop: "{{ users | dict2items }}"
+  become: True
+  tags:
+    - users
+    - groups
+
+- name: Ensure supplementary groups exist
+  group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ users | dict2items | map(attribute='value') | map(attribute='groups') | select('defined') | flatten | unique | list }}"
+  when: item != ''
+  become: true
+  tags:
+    - groups
+
+- name: Add users
+  user:
+    name: "{{ item.value.name }}"
+    group: "{{ item.value.group | default(item.value.name) }}"
+    groups: "{{ item.value.groups | default(omit) }}"
+    shell: "{{ item.value.shell | default('/bin/bash') }}"
+    state: "{{ item.value.state | default('present') }}"
+    append: "{{ 'yes' if item.value.groups is defined else omit }}"
+  loop: "{{ users | dict2items }}"
+  become: True
+  tags:
+    - users
+
+- name: Add keys for users
+  authorized_key:
+    user: "{{ item.0.value.name }}"
+    key: "{{ lookup('file', item.1) }}"
+  loop: "{{ users | dict2items | subelements('value.authorized_key', skip_missing=True) }}"
+  ignore_errors: "{{ ansible_check_mode | default(False) }}"
+  become: True
+  tags:
+    - users
+    - keys
+
+- name: Remove sudoers files for groups without sudo or restricted sudo
+  file:
+    path: "/etc/sudoers.d/group-{{ item.value.name | regex_replace('\\.', '') }}"
+    state: absent
+  when: (item.value.sudo is not defined or not item.value.sudo) and (item.value.restricted_sudo is not defined or not item.value.restricted_sudo)
+  loop: "{{ user_groups | dict2items }}"
+  become: true
+
+
+- name: Set sudoers for groups
+  template:
+    src: group.j2
+    dest: "/etc/sudoers.d/group-{{ item.value.name | regex_replace('\\.', '') }}"
+    mode: 0440
+    validate: "visudo -cf %s"
+  when: (item.value.sudo | default(false)) or (item.value.restricted_sudo | default(false))
+  loop: "{{ user_groups | dict2items }}"
+  become: True
+  tags:
+    - users
+    - sudo
+
+- name: Remove sudoers file for users without sudo or restricted sudo
+  file:
+    path: "/etc/sudoers.d/{{ item.value.name }}"
+    state: absent
+  when: (item.value.sudo is not defined or not item.value.sudo) and (item.value.restricted_sudo is not defined or not item.value.restricted_sudo)
+  loop: "{{ users | dict2items }}"
+  become: True
+  tags:
+    - users
+    - sudo
+    - disabled
+
+- name: Set sudoers for users with full or restricted sudo
+  template:
+    src: "user.j2"
+    dest: "/etc/sudoers.d/{{ item.value.name | regex_replace('\\.', '') }}"
+    mode: 0440
+    validate: "visudo -cf %s"
+  when: (item.value.sudo | default(false)) or (item.value.restricted_sudo | default(false))
+  loop: "{{ users | dict2items }}"
+  become: True
+  tags:
+    - users
+    - sudo
+
+- name: Remove deleted users from the system
+  user:
+    name: "{{ item.name }}"
+    state: absent
+    remove: yes  # Also remove home directory and mail spool
+  loop: "{{ deleted_users }}"
+  become: true
+  tags:
+    - users
+    - delete
