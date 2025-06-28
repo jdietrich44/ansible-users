@@ -43,6 +43,8 @@ ansible-playbook playbooks/users.yml
 ansible-playbook playbooks/users.yml -C
 ```
 
+- You can test this playbook's functionality out of the box by running `ansible-playbook playbooks/users.yml --limit local` against a **Linux localhost**. This will create an `admin` group user `julie` with full passwordless sudo privileges, and a `dev` user `jeff` with restricted sudo privileges (allowed to run `sudo` for `systemctl` and `journalctl` only) on the local machine where the playbook is executed.
+
 ## Sudoers File Management Matrix
 
 The `sudo` and `restricted_sudo` values referenced in this matrix are specified in your `group_vars/<group>.yml` files. This matrix can be used to understand the logic of how sudoers files get created or deleted based on these values.
